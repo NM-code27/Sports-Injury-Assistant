@@ -1,0 +1,10 @@
+.venv/
+myenv/
+physioenv/
+chroma_db/
+data/
+__MACOSX/
+.DS_Store
+__pycache__/
+*.pyc
+.env

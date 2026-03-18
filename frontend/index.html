@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhysioAI</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;600;700;800&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#07090f; --surface:#0e1119; --surface2:#141824; --surface3:#1a2030;
+  --border:#1f2840; --border2:#253050;
+  --accent:#00e5a0; --accent2:#0055ff;
+  --text:#dde4f0; --text2:#8a96ae; --muted:#4a5568;
+  --warn:#ff6b35;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Lato',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 22px;border-bottom:1px solid var(--border);
+  background:rgba(7,9,15,0.98);flex-shrink:0;z-index:20;
+}
+.logo{display:flex;align-items:center;gap:11px;}
+.logo-icon{
+  width:36px;height:36px;border-radius:9px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+  box-shadow:0 0 18px rgba(0,229,160,0.22);
+}
+.logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:19px;letter-spacing:-0.5px;}
+.logo-text span{color:var(--accent);}
+.logo-sub{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;margin-top:1px;}
+.hright{display:flex;align-items:center;gap:10px;}
+.model-select{
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text);font-family:'DM Mono',monospace;font-size:11px;
+  padding:5px 10px;border-radius:6px;outline:none;cursor:pointer;
+}
+.status-badge{
+  display:flex;align-items:center;gap:6px;
+  font-family:'DM Mono',monospace;font-size:11px;
+  padding:5px 12px;border-radius:6px;
+  background:rgba(0,229,160,0.07);border:1px solid rgba(0,229,160,0.2);color:var(--accent);
+  transition:all 0.3s;
+}
+.status-badge.error{background:rgba(255,107,53,0.07);border-color:rgba(255,107,53,0.25);color:#ff8c66;}
+.sdot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+
+/* ── LAYOUT ── */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:272px;border-right:1px solid var(--border);
+  background:var(--surface);display:flex;flex-direction:column;
+  overflow-y:auto;flex-shrink:0;
+}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2);}
+.ss{padding:15px;border-bottom:1px solid var(--border);}
+.slabel{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:2.5px;color:var(--muted);margin-bottom:10px;}
+
+/* Mode buttons */
+.modes{display:flex;flex-direction:column;gap:5px;}
+.mbtn{
+  display:flex;align-items:center;gap:9px;padding:9px 11px;
+  border-radius:9px;border:1px solid transparent;background:transparent;
+  cursor:pointer;text-align:left;color:var(--text2);font-family:'Lato',sans-serif;
+  transition:all 0.15s;width:100%;
+}
+.mbtn:hover{background:var(--surface2);color:var(--text);}
+.mbtn.active{background:var(--surface2);border-color:var(--mc);color:var(--text);}
+.mico{font-size:18px;width:24px;text-align:center;flex-shrink:0;}
+.mname{font-size:12.5px;font-weight:700;font-family:'Syne',sans-serif;}
+.mdesc{font-size:11px;color:var(--muted);margin-top:1px;}
+
+/* Chunk cards */
+.chunk-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;}
+.chunk-list::-webkit-scrollbar{width:2px;}
+.chunk-list::-webkit-scrollbar-thumb{background:var(--border2);}
+.chunk-card{
+  background:var(--surface2);border:1px solid var(--border);
+  border-left:3px solid var(--cc,var(--accent));
+  border-radius:7px;padding:9px 11px;animation:fadeUp 0.3s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.chunk-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.chunk-src{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;}
+.chunk-score{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);background:var(--border);padding:1px 6px;border-radius:3px;}
+.chunk-cat{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:4px;}
+.chunk-text{font-size:11px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.no-chunks{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;text-align:center;padding:14px 0;}
+
+/* Examples */
+.ex-list{display:flex;flex-direction:column;gap:4px;}
+.ex-btn{
+  background:var(--surface2);border:1px solid var(--border);
+  border-left:3px solid var(--ec,var(--accent));
+  border-radius:6px;padding:8px 10px;font-size:11.5px;
+  color:var(--text2);cursor:pointer;text-align:left;
+  transition:all 0.15s;font-family:'Lato',sans-serif;line-height:1.4;width:100%;
+}
+.ex-btn:hover{background:var(--surface3);color:var(--text);}
+
+/* ── CHAT AREA ── */
+.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.mode-bar{
+  padding:9px 22px;border-bottom:1px solid var(--border);
+  background:var(--surface);display:flex;align-items:center;gap:9px;flex-shrink:0;
+}
+.mb-icon{font-size:17px;}
+.mb-name{font-family:'Syne',sans-serif;font-weight:700;font-size:13.5px;}
+.mb-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.rag-pill{
+  font-family:'DM Mono',monospace;font-size:10px;
+  padding:3px 9px;border-radius:5px;
+  background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.18);color:var(--accent);
+}
+
+/* Messages */
+.messages{flex:1;overflow-y:auto;padding:22px 26px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth;}
+.messages::-webkit-scrollbar{width:3px;}
+.messages::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* Welcome */
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;text-align:center;padding:48px 24px;gap:14px;}
+.welcome-icon{font-size:46px;}
+.welcome h2{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.4px;}
+.welcome p{color:var(--text2);font-size:13.5px;max-width:420px;line-height:1.65;}
+.pipeline{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:14px 18px;text-align:left;max-width:440px;
+}
+.pipe-step{display:flex;align-items:flex-start;gap:9px;margin-bottom:9px;font-size:12.5px;color:var(--text2);line-height:1.55;}
+.pipe-step:last-child{margin-bottom:0;}
+.pipe-num{
+  font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);
+  background:rgba(0,229,160,0.1);border-radius:4px;padding:1px 6px;
+  flex-shrink:0;margin-top:2px;
+}
+.pipe-step strong{color:var(--text);}
+
+/* Message rows */
+.msg{display:flex;gap:11px;animation:slideUp 0.28s ease;max-width:860px;}
+.msg.user{flex-direction:row-reverse;align-self:flex-end;}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.av{
+  width:33px;height:33px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  flex-shrink:0;margin-top:2px;
+}
+.av.bot{background:var(--surface2);border:1px solid var(--border2);}
+.av.usr{background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.22);}
+
+/* Bubbles */
+.bubble{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:13px;padding:13px 17px;font-size:13.5px;line-height:1.75;flex:1;
+}
+.msg.user .bubble{
+  background:rgba(0,229,160,0.05);border-color:rgba(0,229,160,0.17);
+  flex:initial;max-width:68%;
+}
+
+/* Source chips */
+.cites{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px;padding-bottom:11px;border-bottom:1px solid var(--border);}
+.cite{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 9px;
+  border-radius:5px;font-size:10.5px;font-family:'DM Mono',monospace;border:1px solid;
+}
+.cite-score{font-size:9px;color:var(--muted);background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;}
+
+/* Markdown inside bubbles */
+.bubble h3{font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.bubble h3:first-child{margin-top:0;}
+.bubble strong{font-weight:700;}
+.bubble ul{margin:5px 0 10px;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:4px;}
+.bubble li{display:flex;gap:8px;align-items:flex-start;}
+.bubble li::before{content:'›';color:var(--bullet-c,var(--accent));font-weight:700;flex-shrink:0;margin-top:1px;}
+.bubble p{margin-bottom:8px;}
+.bubble p:last-child{margin-bottom:0;}
+.disclaimer{
+  margin-top:10px;padding:7px 11px;border-radius:6px;font-size:11.5px;
+  background:rgba(255,107,53,0.05);border:1px solid rgba(255,107,53,0.18);
+  color:var(--text2);font-style:italic;
+}
+
+/* Thinking indicator */
+.thinking{display:flex;gap:11px;}
+.thinking-bub{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:13px;padding:12px 16px;display:flex;align-items:center;gap:10px;
+  font-size:11.5px;color:var(--text2);font-family:'DM Mono',monospace;
+}
+.dots{display:flex;gap:5px;}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:bounce 1.2s infinite;}
+.dot:nth-child(2){animation-delay:.2s;}
+.dot:nth-child(3){animation-delay:.4s;}
+@keyframes bounce{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-5px);opacity:1}}
+
+/* Error banner */
+.error-banner{
+  margin:0 26px 12px;padding:11px 14px;border-radius:8px;
+  background:rgba(255,107,53,0.07);border:1px solid rgba(255,107,53,0.25);
+  font-size:12.5px;color:#ff8c66;line-height:1.6;display:none;
+}
+.error-banner code{font-family:'DM Mono',monospace;background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:3px;}
+
+/* Input */
+.input-area{padding:13px 22px 18px;border-top:1px solid var(--border);background:rgba(7,9,15,0.92);backdrop-filter:blur(12px);flex-shrink:0;}
+.input-box{
+  display:flex;gap:9px;align-items:flex-end;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:11px;padding:11px 13px;transition:border-color .2s;
+}
+.input-box:focus-within{border-color:rgba(0,229,160,.35);}
+textarea{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:'Lato',sans-serif;font-size:13.5px;
+  resize:none;min-height:22px;max-height:110px;line-height:1.5;
+}
+textarea::placeholder{color:var(--muted);}
+.send-btn{
+  width:35px;height:35px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  transition:opacity .15s,transform .15s;flex-shrink:0;
+}
+.send-btn:hover{opacity:.85;transform:scale(1.06);}
+.send-btn:disabled{opacity:.3;cursor:not-allowed;transform:none;}
+.input-footer{display:flex;justify-content:space-between;align-items:center;margin-top:7px;padding:0 2px;}
+.imode{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);display:flex;align-items:center;gap:5px;}
+.ihint{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+
+@media(max-width:720px){.sidebar{display:none;}.messages{padding:14px;}.input-area{padding:10px 14px 14px;}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏃</div>
+    <div>
+      <div class="logo-text">Physio<span>AI</span></div>
+      <div class="logo-sub">RAG · Local LLM · No API Key</div>
+    </div>
+  </div>
+  <div class="hright">
+    <select id="model-select" class="model-select">
+      <option value="llama3.2">llama3.2</option>
+    </select>
+    <div class="status-badge" id="status-badge">
+      <div class="sdot"></div>
+      <span id="status-text">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="ss">
+      <div class="slabel">Mode</div>
+      <div class="modes" id="modes">
+        <button class="mbtn active" data-mode="injury"      style="--mc:#00e5a0" onclick="setMode('injury',this)">
+          <span class="mico">🩺</span><div><div class="mname">Injury Recovery</div><div class="mdesc">Rehab & protocols</div></div>
+        </button>
+        <button class="mbtn" data-mode="prevention"         style="--mc:#f5c842" onclick="setMode('prevention',this)">
+          <span class="mico">🛡️</span><div><div class="mname">Injury Prevention</div><div class="mdesc">Warmup & strength</div></div>
+        </button>
+        <button class="mbtn" data-mode="nutrition-rec"      style="--mc:#ff8c42" onclick="setMode('nutrition-rec',this)">
+          <span class="mico">🥗</span><div><div class="mname">Recovery Nutrition</div><div class="mdesc">Foods that heal</div></div>
+        </button>
+        <button class="mbtn" data-mode="pre"                style="--mc:#a78bfa" onclick="setMode('pre',this)">
+          <span class="mico">⚡</span><div><div class="mname">Pre-Workout Nutrition</div><div class="mdesc">Fuel & energy</div></div>
+        </button>
+        <button class="mbtn" data-mode="post"               style="--mc:#38bdf8" onclick="setMode('post',this)">
+          <span class="mico">🔋</span><div><div class="mname">Post-Workout Nutrition</div><div class="mdesc">Recover & replenish</div></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="ss" style="flex-shrink:0;">
+      <div class="slabel">Retrieved Chunks <span id="chunk-label" style="color:var(--accent)"></span></div>
+      <div class="chunk-list" id="chunk-list">
+        <div class="no-chunks">Ask a question to see retrieved context</div>
+      </div>
+    </div>
+
+    <div class="ss">
+      <div class="slabel">Example Queries</div>
+      <div class="ex-list" id="ex-list"></div>
+    </div>
+
+  </aside>
+
+  <!-- CHAT -->
+  <div class="chat-area">
+    <div class="mode-bar">
+      <span class="mb-icon" id="mb-icon">🩺</span>
+      <span class="mb-name" id="mb-name" style="color:#00e5a0">Injury Recovery</span>
+      <div class="mb-right">
+        <span class="rag-pill">Chroma · embeddings · top-3</span>
+        <span class="rag-pill" id="retrieved-pill">Retrieved: 0 chunks</span>
+      </div>
+    </div>
+
+    <div class="error-banner" id="error-banner"></div>
+
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">🔬</div>
+        <h2>PhysioAI — Real RAG, Local LLM</h2>
+        <p>Every answer is grounded in retrieved knowledge chunks. Nothing is hallucinated.</p>
+        <div class="pipeline">
+          <div class="pipe-step"><span class="pipe-num">1</span><span>PDF files are split into chunks and stored in a <strong>Chroma vector index</strong></span></div>
+          <div class="pipe-step"><span class="pipe-num">2</span><span>Your query is embedded, then <strong>nearest chunks are retrieved</strong> by vector similarity</span></div>
+          <div class="pipe-step"><span class="pipe-num">3</span><span>Top chunks are <strong>injected into the prompt</strong> and shown in the sidebar</span></div>
+          <div class="pipe-step"><span class="pipe-num">4</span><span>Local Ollama LLM answers <strong>only from retrieved context</strong> — streamed live</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-box">
+        <textarea id="userInput" placeholder="Ask about injury recovery, prevention, or nutrition…"
+          rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+      </div>
+      <div class="input-footer">
+        <div class="imode">
+          <span id="imdot" style="width:7px;height:7px;border-radius:50%;background:#00e5a0;display:inline-block;"></span>
+          <span id="imname" style="color:#00e5a0;font-weight:700;">Injury Recovery</span>
+        </div>
+        <div class="ihint">⚕️ Educational only — consult a physiotherapist</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const API = 'http://localhost:8000';   // FastAPI backend
+const SOURCE_TAG = {
+  color: '#00e5a0',
+  border: 'rgba(0,229,160,0.35)',
+  bg: 'rgba(0,229,160,0.10)',
+};
+
+// ── MODE CONFIG ───────────────────────────────────────────────────────────────
+const MODES = {
+  injury:          { icon:'🩺', name:'Injury Recovery',      color:'#00e5a0', cbg:'rgba(0,229,160,0.07)',   cborder:'rgba(0,229,160,0.28)',
+    examples:['How long does ACL recovery take?','What exercises help rotator cuff recovery?','How do I rehab a Grade 2 hamstring strain?','Signs of a stress fracture?'] },
+  prevention:      { icon:'🛡️', name:'Injury Prevention',   color:'#f5c842', cbg:'rgba(245,200,66,0.07)',  cborder:'rgba(245,200,66,0.28)',
+    examples:['How can runners prevent knee injuries?','How can footballers prevent hamstring strains?','How can weightlifters avoid shoulder injuries?','Best ACL prevention for female athletes?'] },
+  'nutrition-rec': { icon:'🥗', name:'Recovery Nutrition',   color:'#ff8c42', cbg:'rgba(255,140,66,0.07)',  cborder:'rgba(255,140,66,0.28)',
+    examples:['What foods help muscle recovery after injury?','What should athletes eat during ACL recovery?','Which nutrients help ligament healing?','Best anti-inflammatory foods for injuries?'] },
+  pre:             { icon:'⚡', name:'Pre-Workout Nutrition', color:'#a78bfa', cbg:'rgba(167,139,250,0.07)', cborder:'rgba(167,139,250,0.28)',
+    examples:['What should athletes eat before training?','What foods give energy for sports?','Best pre-workout meal for a marathon runner?','How long before training should I eat?'] },
+  post:            { icon:'🔋', name:'Post-Workout Nutrition',color:'#38bdf8', cbg:'rgba(56,189,248,0.07)',  cborder:'rgba(56,189,248,0.28)',
+    examples:['What should I eat after a workout?','Best post-workout meal for muscle gain?','What electrolytes should I replace after training?','Post-workout nutrition for endurance athletes?'] },
+};
+
+let currentMode = 'injury';
+let history = [];
+let loading = false;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function init() {
+  renderExamples('injury');
+  clearChunks();
+  await checkHealth();
+}
+
+async function checkHealth() {
+  try {
+    const res = await fetch(`${API}/health`);
+    const data = await res.json();
+    const badge = document.getElementById('status-badge');
+    const text = document.getElementById('status-text');
+
+    if (data.ollama_connected) {
+      text.textContent = `Ollama ✓  ·  ${data.chunks_indexed} chunks`;
+      badge.className = 'status-badge';
+      // Populate model dropdown
+      if (data.available_models?.length) {
+        const sel = document.getElementById('model-select');
+        sel.innerHTML = data.available_models.map(m => `<option value="${m}">${m}</option>`).join('');
+      }
+    } else {
+      text.textContent = 'Ollama not running';
+      badge.className = 'status-badge error';
+      showError('⚠️ Ollama is not running. Start it with: <code>ollama serve</code><br>Then pull a model: <code>ollama pull llama3.2</code>');
+    }
+  } catch {
+    const badge = document.getElementById('status-badge');
+    badge.className = 'status-badge error';
+    document.getElementById('status-text').textContent = 'Backend offline';
+    showError('⚠️ Cannot reach the Python backend at <code>localhost:8000</code>.<br>Run: <code>cd backend && uvicorn main:app --reload</code>');
+  }
+}
+
+function showError(html) {
+  const b = document.getElementById('error-banner');
+  b.innerHTML = html;
+  b.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+// ── MODE ──────────────────────────────────────────────────────────────────────
+function setMode(mode, btn) {
+  currentMode = mode;
+  const cfg = MODES[mode];
+
+  document.querySelectorAll('.mbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.getElementById('mb-icon').textContent = cfg.icon;
+  document.getElementById('mb-name').textContent = cfg.name;
+  document.getElementById('mb-name').style.color = cfg.color;
+  document.getElementById('imdot').style.background = cfg.color;
+  document.getElementById('imname').textContent = cfg.name;
+  document.getElementById('imname').style.color = cfg.color;
+  document.getElementById('userInput').placeholder = cfg.examples[0];
+
+  renderExamples(mode);
+  clearChunks();
+
+  history = [];
+  const msgs = document.getElementById('messages');
+  if (!document.getElementById('welcome')) {
+    msgs.innerHTML = `<div class="welcome" id="welcome">
+      <div class="welcome-icon">${cfg.icon}</div>
+      <h2>${cfg.name}</h2>
+      <p>Switched to ${cfg.name} mode. Ask anything — relevant chunks will be retrieved automatically.</p>
+    </div>`;
+  }
+}
+
+function renderExamples(mode) {
+  const cfg = MODES[mode];
+  document.getElementById('ex-list').innerHTML = cfg.examples.map(e => `
+    <button class="ex-btn" style="--ec:${cfg.color}" onclick="sendExample('${e.replace(/'/g,"\\'")}')">
+      ${e}
+    </button>`).join('');
+}
+
+function clearChunks() {
+  document.getElementById('chunk-list').innerHTML = '<div class="no-chunks">Ask a question to see retrieved context</div>';
+  document.getElementById('chunk-label').textContent = '(0 chunks · 0 sources)';
+  updateRetrievedIndicators(0, 0);
+}
+
+function updateRetrievedIndicators(chunkCount, sourceCount) {
+  const chunks = Number(chunkCount) || 0;
+  const sources = Number(sourceCount) || 0;
+  document.getElementById('retrieved-pill').textContent =
+    `Retrieved: ${chunks} chunk${chunks === 1 ? '' : 's'} · ${sources} source${sources === 1 ? '' : 's'}`;
+}
+
+function formatPageList(pages) {
+  if (!pages.length) return 'n/a';
+  const sorted = [...pages].sort((a, b) => a - b);
+  const shown = sorted.slice(0, 8);
+  const more = sorted.length - shown.length;
+  return more > 0 ? `${shown.join(', ')} +${more}` : shown.join(', ');
+}
+
+function aggregateSources(sources) {
+  const safe = (Array.isArray(sources) ? sources : []).map(s => ({
+    ...s,
+    score: Number(s?.score) || 0,
+    page: Number(s?.page) || null,
+    source: String(s?.source || 'Unknown Source'),
+    text: String(s?.text || ''),
+  }));
+  if (!safe.length) {
+    return { chunks: 0, groups: [] };
+  }
+
+  const totalScore = safe.reduce((sum, s) => sum + Math.max(s.score, 0), 0);
+  const bySource = new Map();
+
+  for (const s of safe) {
+    if (!bySource.has(s.source)) {
+      bySource.set(s.source, {
+        source: s.source,
+        scoreSum: 0,
+        scoreMax: 0,
+        chunks: 0,
+        pages: new Set(),
+        preview: '',
+      });
+    }
+    const group = bySource.get(s.source);
+    group.scoreSum += Math.max(s.score, 0);
+    group.scoreMax = Math.max(group.scoreMax, s.score);
+    group.chunks += 1;
+    if (s.page) group.pages.add(s.page);
+    if (!group.preview && s.text) group.preview = s.text;
+  }
+
+  const groups = Array.from(bySource.values())
+    .map(g => {
+      const share = totalScore > 0 ? (g.scoreSum / totalScore) * 100 : 100 / bySource.size;
+      const sim = g.chunks ? g.scoreSum / g.chunks : 0;
+      const pages = [...g.pages];
+      return {
+        source: g.source,
+        chunks: g.chunks,
+        share: Number(share.toFixed(1)),
+        score: Number(sim.toFixed(2)),
+        pages,
+        pagesLabel: formatPageList(pages),
+        preview: g.preview,
+      };
+    })
+    .sort((a, b) => b.share - a.share);
+
+  return { chunks: safe.length, groups };
+}
+
+function renderChunks(sources, cfg) {
+  const aggregated = aggregateSources(sources);
+  const grouped = aggregated.groups;
+  document.getElementById('chunk-label').textContent = `(${aggregated.chunks} chunks · ${grouped.length} sources)`;
+  updateRetrievedIndicators(aggregated.chunks, grouped.length);
+  if (!grouped.length) {
+    document.getElementById('chunk-list').innerHTML = '<div class="no-chunks">No chunks retrieved for this query</div>';
+    return;
+  }
+  document.getElementById('chunk-list').innerHTML = grouped.map(s => `
+    <div class="chunk-card" style="--cc:${cfg.color}">
+      <div class="chunk-top">
+        <span class="chunk-src" style="color:${SOURCE_TAG.color}">📄 ${esc(s.source)}</span>
+        <span class="chunk-score">${s.share}% share · ${s.score}% sim</span>
+      </div>
+      <div class="chunk-cat">Pages: ${esc(s.pagesLabel)} · ${s.chunks} chunk${s.chunks === 1 ? '' : 's'}</div>
+      <div class="chunk-text">${esc(s.preview)}</div>
+    </div>`).join('');
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function sendExample(text) {
+  document.getElementById('userInput').value = text;
+  sendMessage();
+}
+
+function removeWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.remove();
+}
+
+function addUserBubble(text) {
+  removeWelcome();
+  const c = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'msg user';
+  d.innerHTML = `<div class="av usr">🧑</div><div class="bubble">${esc(text)}</div>`;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+
+function showThinking(cfg) {
+  removeWelcome();
+  const c = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'thinking';
+  d.id = 'thinking';
+  d.innerHTML = `
+    <div class="av bot">${cfg.icon}</div>
+    <div class="thinking-bub">
+      <span id="tlabel">Retrieving chunks…</span>
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>`;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+
+function removeThinking() {
+  const t = document.getElementById('thinking');
+  if (t) t.remove();
+}
+
+function fmtMarkdown(text, color) {
+  return text
+    .replace(/^###\s+(.+)$/gm, `<h3 style="color:${color}">$1</h3>`)
+    .replace(/^##\s+(.+)$/gm,  `<h3 style="color:${color}">$1</h3>`)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+
+async function sendMessage() {
+  if (loading) return;
+  const input = document.getElementById('userInput');
+  const query = input.value.trim();
+  if (!query) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  loading = true;
+  document.getElementById('sendBtn').disabled = true;
+  hideError();
+
+  const cfg = MODES[currentMode];
+  const model = document.getElementById('model-select').value;
+
+  addUserBubble(query);
+  showThinking(cfg);
+
+  try {
+    const res = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        mode: currentMode,
+        history: history.map(m => ({ role: m.role, content: m.content })),
+        model,
+        top_k: 3,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server error ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    let sources = [];
+    let fullText = '';
+    let msgDiv = null;
+    let streamEl = null;
+    const c = document.getElementById('messages');
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const lines = decoder.decode(value, { stream: true }).split('\n').filter(l => l.trim());
+
+      for (const line of lines) {
+        let event;
+        try { event = JSON.parse(line); } catch { continue; }
+
+        if (event.type === 'sources') {
+          // Got chunk metadata — render sidebar and remove thinking
+          sources = Array.isArray(event.sources) ? event.sources : [];
+          renderChunks(sources, cfg);
+          removeThinking();
+
+          const grouped = aggregateSources(sources).groups;
+
+          // Create streaming bubble
+          const citesHtml = grouped.map(s => `
+            <span class="cite" style="color:${SOURCE_TAG.color};border-color:${SOURCE_TAG.border};background:${SOURCE_TAG.bg}">
+              📄 ${esc(s.source)} <span class="cite-score">${s.share}% share · p${esc(s.pagesLabel)}</span>
+            </span>`).join('');
+
+          msgDiv = document.createElement('div');
+          msgDiv.className = 'msg';
+          msgDiv.innerHTML = `
+            <div class="av bot" style="border-color:${cfg.cborder}">${cfg.icon}</div>
+            <div class="bubble" style="--bullet-c:${cfg.color}">
+              <div class="cites">${citesHtml}</div>
+              <div id="stream-out"></div>
+            </div>`;
+          c.appendChild(msgDiv);
+          streamEl = document.getElementById('stream-out');
+
+        } else if (event.type === 'token' && streamEl) {
+          fullText += event.content;
+          streamEl.innerHTML = `<p>${fmtMarkdown(fullText, cfg.color)}</p>`;
+          c.scrollTop = c.scrollHeight;
+
+        } else if (event.type === 'done' && msgDiv) {
+          // Final render + disclaimer
+          streamEl.id = '';
+          streamEl.innerHTML = `<p>${fmtMarkdown(fullText, cfg.color)}</p>`;
+          const disc = document.createElement('div');
+          disc.className = 'disclaimer';
+          disc.textContent = '⚕️ Educational content from retrieved sports medicine literature. Consult a physiotherapist for personal advice.';
+          msgDiv.querySelector('.bubble').appendChild(disc);
+
+          history.push({ role: 'user', content: query });
+          history.push({ role: 'assistant', content: fullText });
+
+        } else if (event.type === 'error') {
+          removeThinking();
+          showError(`⚠️ ${esc(event.message)}`);
+        }
+      }
+    }
+
+  } catch (err) {
+    removeThinking();
+    showError(`⚠️ ${esc(err.message)} — is the backend running? <code>uvicorn main:app --reload</code>`);
+  }
+
+  loading = false;
+  document.getElementById('sendBtn').disabled = false;
+  input.focus();
+}
+
+init();
+</script>
+</body>
+</html>
