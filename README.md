@@ -1,5 +1,7 @@
 PhysioAI – Sports Injury Recovery Chatbot
 
+![PhysioAI Banner](assets/cover.png)
+
 PhysioAI is a sports injury recovery and prevention chatbot that uses Retrieval-Augmented Generation (RAG) with Ollama and FastAPI.
 The system retrieves relevant information from sports medicine documents and generates evidence-based responses.
 
